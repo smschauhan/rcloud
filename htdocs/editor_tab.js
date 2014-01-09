@@ -565,13 +565,12 @@ var editor = function () {
     function update_notebook_view(user, gistname, entry, selroot) {
         if(selroot === true)
             selroot = i_starred_[gistname] ? 'interests' : 'alls';
-        if(i_starred_[gistname]) {
+        if(i_starred_[gistname])
             update_tree_entry('interests', user, gistname, entry, true,
                               selroot==='interests' ? select_node : null);
-            if(gistname === config_.currbook) {
-                star_notebook_button_(true);
-                $('#curr-star-count').text(num_stars_[gistname]);
-            }
+        if(gistname === config_.currbook) {
+            star_notebook_button_.set_state(i_starred_[gistname]);
+            $('#curr-star-count').text(num_stars_[gistname]);
         }
 
         var node = update_tree_entry('alls', user, gistname, entry, true,
@@ -597,12 +596,13 @@ var editor = function () {
         }
         remove_node(node);
         if(gistname === config_.currbook) {
-            star_notebook_button_(false);
+            star_notebook_button_.set_state(false);
             $('#curr-star-count').text(num_stars_[gistname]);
         }
-        /* not needed in practice because remove_node forces refresh
         node = $tree_.tree('getNodeById', node_id('alls', user, gistname));
-        $(node.element).find('.fontawesome-button.star')[0].set_state(false); */
+        var all_star = $(node.element).find('.fontawesome-button.star');
+        all_star[0].set_state(false);
+        all_star.find('sub').text(num_stars_[gistname]);
     }
 
     function update_notebook_from_gist(result, history, selroot) {
@@ -714,13 +714,15 @@ var editor = function () {
                                                      'star',
                                                      star_style);
                 // sigh, ui_utils.twostate_icon should be a mixin or something
+                // ... why does this code exist?
                 star_unstar.click(function(e) {
                     e.preventDefault();
                     e.stopPropagation(); // whatever you do, don't let this event percolate
                     var new_state = !state;
                     result.star_notebook(new_state, {gistname: node.gistname, user: node.user});
                 });
-                star_unstar[0].set_state = function() {
+                star_unstar[0].set_state = function(val) {
+                    state = !!val;
                     $(this).find('i').attr('class', states[state].class);
                 };
                 star_unstar.append($('<sub/>').append(num_stars_[node.gistname]));
@@ -816,6 +818,7 @@ var editor = function () {
                     that.new_notebook();
                 k && k();
             });
+            /* Search disabled for Version 0.9
             var old_text = "";
             window.setInterval(function() {
                 var new_text = $("#input-text-search").val();
@@ -824,12 +827,24 @@ var editor = function () {
                     that.search(new_text);
                 }
             }, 500);
+             */
             $('#new-notebook').click(function() {
                 that.new_notebook();
             });
+            function publish_success(gistname, un) {
+                return function(val) {
+                    var verb = (un ? "un" : "") + "publish";
+                    if(!val)
+                        console.log("Failed to " + verb + " notebook " + gistname);
+                };
+            }
             publish_notebook_checkbox_ = ui_utils.checkbox_menu_item($("#publish-notebook"),
-               function() { rcloud.publish_notebook(config_.currbook); },
-               function() { rcloud.unpublish_notebook(config_.currbook); });
+               function() {
+                   rcloud.publish_notebook(config_.currbook, publish_success(config_.currbook, false));
+               },
+               function() {
+                   rcloud.unpublish_notebook(config_.currbook, publish_success(config_.currbook, true));
+               });
             var snf = result.star_notebook;
             star_notebook_button_ =
                 ui_utils.twostate_icon($("#star-notebook"),
@@ -890,7 +905,7 @@ var editor = function () {
         rename_notebook: function(gistname, newname) {
             rcloud.rename_notebook(gistname, newname, this.load_callback(null, true, true));
         },
-        star_notebook: function(star, opts) {
+        star_notebook: function(star, opts, k) {
             var that = this;
             // if opts has user and gistname use those
             // else if opts has notebook, use notebook id & user
@@ -923,6 +938,7 @@ var editor = function () {
                         that.save_config();
                         update_notebook_view(user, gistname, entry, opts.selroot);
                     }
+                    k && k();
                 });
             }
             else {
@@ -931,17 +947,24 @@ var editor = function () {
                     remove_interest(user, gistname);
                     that.save_config();
                     unstar_notebook_view(user, gistname);
+                    k && k();
                 });
             }
         },
         remove_notebook: function(node) {
-            remove_interest(node.user, node.gistname);
+            var that = this;
+            var k = function() {
+                remove_node(node);
+                if(node.gistname === config_.currbook)
+                    that.new_notebook();
+            };
             remove_all(node.user, node.gistname);
-            result.save_config();
-            unstar_notebook_view(node.user, node.gistname);
-            remove_node(node);
-            if(node.gistname === config_.currbook)
-                this.new_notebook();
+            if(i_starred_[node.gistname])
+                this.star_notebook(false, {user: node.user, gistname: node.gistname}, k);
+            else {
+                result.save_config();
+                k();
+            }
         },
         set_visibility: function(node, visibility) {
             if(node.user !== username_)
@@ -1005,7 +1028,9 @@ var editor = function () {
                 });
                 $("#github-notebook-id").text(result.id).click(false);
                 rcloud.is_notebook_published(result.id, function(p) {
-                    publish_notebook_checkbox_(p);
+                    publish_notebook_checkbox_.set_state(p);
+                    publish_notebook_checkbox_.enable(result.user.login === username_);
+
                 });
                 k && k();
             };
