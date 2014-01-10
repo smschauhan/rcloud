@@ -313,7 +313,7 @@ RCloud.create = function(rcloud_ocaps) {
 				var tableContent=""; 
 				var star_count;
 				for(var i=0;i<len;i++){
-					d.response.docs[i].url = d.response.docs[i].url.substring(0,(d.response.docs[i].url.length-4));
+					d.response.docs[i].user_url = d.response.docs[i].user_url.substring(0,(d.response.docs[i].user_url.length-4));
 					d.response.docs[i].content = (d.response.docs[i].content+"").replace(/q/g,'<b style="color:red;background:yellow">'+q+'</b>');
 					if (typeof d.response.docs[i].starcount === "undefined"){
 						star_count = 0;
