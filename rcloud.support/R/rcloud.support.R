@@ -195,11 +195,104 @@ rcloud.upload.to.notebook <- function(file, name) {
   res
 }
 
+#ADDED THIS FUNCTION FOR SOLR SEARCH FUNCTIONALITY
 rcloud.update.notebook <- function(id, content) {
+  myctx <- .session$rgithub.context
   res <- modify.gist(id, content, ctx = .session$rgithub.context)
   .session$current.notebook <- res
-  res
+  redis_host <- toString(.session$redis.host)  
+  redis_port <- as.numeric(.session$redis.port)  
+  solr_host <- toString(.session$solr.host)  
+  solr_port <- as.numeric(.session$solr.port)
+  library(rredis)
+  redisConnect(host=redis_host,port=redis_port, password=NULL, returnRef= FALSE, nodelay=FALSE, timeout=2678399L)
+  redisSet("session_object",.session$rgithub.context)  
+  curlTemplate <- "curl http://host:port/solr/update?commitWithin=5000 -H 'Content-type:application/json' -d '[{\"id\":\"v_id\", \"user\":\"v_user\", \"user_url\":\"v_user_url\", \"created_at\":\"v_created_at\", \"updated_at\":\"v_updated_at\", \"commited_at\":\"v_commited_at\", \"content\":\"v_content\", \"avatar_url\":\"v_avatar_url\", \"followers\":\"v_followers\", \"description\":\"v_description\", \"size\":\"v_size\", \"public\":\"v_public\",\"starcount\":\"v_starcount\"}]'" 
+  curlTemplate <- gsub("host",solr_host,curlTemplate)
+  curlTemplate <- gsub("port",solr_port,curlTemplate)  
+  library("rjson")
+  parser<-newJSONParser()
+  parser$addData(content)
+  jsoncontent<-parser$getObject()
+  old<-jsoncontent[[1]][[1]]
+  old<-gsub("[\"']","",old)
+  jsonData <- paste("{\"id\":\"",id,"\",\"content\":\"",old,"\",\"user\":\"",myctx$user$login,"\"}",sep="");
+  r <- redisGet(id)
+  if(is.null(r)){
+	parser<-newJSONParser()
+	parser$addData(jsonData)
+	r<-parser$getObject()
+  }else if(typeof(r)=="list" || typeof(r)=="character"){
+	parser<-newJSONParser()
+	parser$addData(jsonData)
+	jsonData<-parser$getObject()
+	r$content <- paste(r$content,jsonData$content,sep=" ")
+  }
+  redisSet(id,r)
+  redis_res<-redisGet(id)
+  username <- redis_res$user
+  redcmd<-paste("notebook/",id,"/starcount",sep="")
+  star_count<-redisGet(redcmd)
+  redis_cmd <- gsub("user",username,"user/system/config.json")
+  redis_json <- redisGet(redis_cmd)
+  library(RJSONIO)
+  redis_response <- fromJSON(redis_json)
+  notebooks<-lapply(redis_response$interests[[1]], function(x) x[[1]][[1]])
+  updated_at<-lapply(redis_response$interests[[1]], function(x) x[[2]][[1]])
+  visibility<-lapply(redis_response$interests[[1]], function(x) x[[3]][[1]])
+  count <- redis_response$nextwork-1
+  for(i in 1:count)
+  { 
+    	if (redis_response$currbook==names(notebooks)[i])
+	  {
+		description <- notebooks[[i]]
+		update_time <- updated_at[[i]]
+		public_state <- visibility[[i]]
+	  }
+  }
+  if ( public_state == "public")
+  {
+	    public_s <- "TRUE"
+  }else	{
+	    public_s <- "FALSE"
 }
+################Added to get session Response#########################
+  session_res <- redisGet("session_object")
+  followers <- session_res$user$followers
+  created_at <- session_res$user$created_at
+  avatar_url <- session_res$user$avatar_url
+  user_url <- session_res$user$url
+  g_url <- session_res$user$html_url 
+  curlCommand <- gsub("v_id",redis_res$id,curlTemplate)
+  curlCommand <- gsub("v_user_url",user_url,curlCommand)
+  curlCommand <- gsub("v_user",redis_res$user,curlCommand)	
+  curlCommand <- gsub("v_created_at",created_at,curlCommand)
+  curlCommand <- gsub("v_updated_at",update_time,curlCommand)
+  curlCommand <- gsub("v_commited_at",created_at,curlCommand)
+  curlCommand <- gsub("v_content",redis_res$content,curlCommand)
+  curlCommand <- gsub("v_url","g_url",curlCommand)
+  curlCommand <- gsub("v_avatar_url",avatar_url,curlCommand)
+  curlCommand <- gsub("v_followers",followers,curlCommand)
+  curlCommand <- gsub("v_description",description,curlCommand)
+  curlCommand <- gsub("v_size","10",curlCommand)
+  curlCommand <- gsub("v_public",public_s,curlCommand)
+  curlCommand <- gsub("v_starcount",star_count,curlCommand)
+  system(curlCommand)
+  redisClose()
+}
+
+rcloud.custom.search <-function(q){
+	library("rjson")
+	library("RCurl")  
+    solr_host <- toString(.session$solr.host)  
+    solr_port <- as.numeric(.session$solr.port)
+	solr_url <- paste("http://host:s_port/solr/select?q=",q,"&start=0&rows=1000&wt=json",sep="")
+	solr_url <- gsub("host",solr_host,solr_url)
+	solr_url <- gsub("s_port",solr_port,solr_url)
+	solr_res<-getURL(solr_url)
+	return(solr_res)
+}
+#END
 
 rcloud.create.notebook <- function(content) {
   res <- create.gist(content, ctx = .session$rgithub.context)
