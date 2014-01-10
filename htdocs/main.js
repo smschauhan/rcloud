@@ -1,3 +1,18 @@
+/*
+ * added these functions for supporting search functionality [ Line : 5 TO 13]
+ * */
+
+function search(){	
+	var qry = $('#input-text-search').val();
+	rcloud.custom_search(qry); 
+	return;
+}
+
+function load_searched_notebook(notebook_id){
+    window.open("http://127.0.0.1:8080/main.html?notebook="+notebook_id);	
+}
+/*--------------------------END--------------------------*/
+
 function resize_side_panel() {
     var non_notebook_panel_height = 246;
     $('.notebook-tree').css('height', (window.innerHeight - non_notebook_panel_height)+'px');

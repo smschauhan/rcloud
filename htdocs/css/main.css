@@ -1,3 +1,35 @@
+/* Added for search functionality*/
+.headerDiv
+			{
+			 border:solid 1px #000;
+			 font-family:Arial, Helvetica, sans-serif;
+			 font-size:15px;
+			 color:#fff;
+			 font-weight:bold; 
+			 padding:6px 4px 6px 4px;
+			 background-color: white;
+			 position: absolute;
+			 z-index: 10;
+			 overflow: auto;
+			 border-bottom-left-radius: 5px;
+			 border-bottom-right-radius: 5px;
+			}
+.closeButtonDiv
+			{
+			 text-align: center;
+			 border-top-radius: 5px;
+			 border:solid 1px #000;
+			 font-family:Arial, Helvetica, sans-serif;
+			 font-size:14px;
+			 color: white;
+			 font-weight:bold;
+			 background-color: grey;
+			 z-index: 11;
+			 overflow: auto;
+			 border-top-right-radius: 5px;
+			 border-top-left-radius: 5px;
+			}	
+/*     End */
 body {
     font-family: Helvetica Neue, Verdana, Helvetica, Arial, sans-serif;
     padding-top: 65px;

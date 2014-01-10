@@ -302,6 +302,45 @@ RCloud.create = function(rcloud_ocaps) {
         rcloud.save_user_config = function(user, content, k) {
             rcloud_ocaps.save_user_config(user, JSON.stringify(content), json_k(k));
         };
+/*---------------ADDED THIS FUNCTION FOR SOLR SEARCH FUNCTIONALITY---------------*/
+        rcloud.custom_search = function(qry){
+			var res;
+			function createListOfSearchResults(d){
+				q=qry;
+				d = JSON.parse(d);
+				var qTime = d["responseHeader"]["QTime"];
+				var len = d.response.docs.length;
+				var tableContent=""; 
+				var star_count;
+				for(var i=0;i<len;i++){
+					d.response.docs[i].user_url = d.response.docs[i].user_url.substring(0,(d.response.docs[i].user_url.length-4));
+					d.response.docs[i].content = (d.response.docs[i].content+"").replace(/q/g,'<b style="color:red;background:yellow">'+q+'</b>');
+					if (typeof d.response.docs[i].starcount === "undefined"){
+						star_count = 0;
+					}else{
+						star_count = d.response.docs[i].starcount;
+					}
+					var notebook_id = d.response.docs[i].id;
+					var image_string = "";
+					for (var j=1;j<=star_count;j++){
+						image_string += "<img src='../img/star.png' height='15' width='15' >";
+					}					
+					tableContent += "<table width=100%><tr><td onclick='load_searched_notebook(\""+notebook_id+"\")'><label style='color:blue; margin-right: 5px;'>"+d.response.docs[i].description+"</label>" + image_string + "</td></tr>";
+					tableContent += "<tr><td>created by : "+d.response.docs[i].user+"</td></tr><tr><td>created at :"+d.response.docs[i].created_at+"</td></tr><tr><td>Last Updated at:"+d.response.docs[i].updated_at+"<td></tr><tr><td class='content' style='height:10px;font-size: 9'>"+d.response.docs[i].content+"<td></tr></table><br/>";
+				}
+				$("#Pop-up").modal({show:true});
+				$("#divPopup").show(200);
+				$("#divClose").show(200);
+				$("#divPopup").html(tableContent);
+				$(".content").html(function(index, value) {
+					return value.replace(new RegExp(qry,"gm"), '<strong style="color: #ff0000;">'+qry+'</strong>');
+					});
+				$("#divClose").html("Search For: <b>" +qry+"</b> <i style=\"font-size:10px\">Results Found:"+len+"</i><i style=\"font-size:10px\"> Response Time:"+qTime+"ms<i><div style=\"float:right\"><b>[x]&nbsp;</b></div>");
+			}
+			rcloud_ocaps.custom_search(qry, createListOfSearchResults);
+			return res;
+		};
+/*---------------------------------------END-----------------------------------*/	
         rcloud.update_notebook = function(id, content, k) {
             k = rcloud_github_handler("rcloud.update.notebook", k);
             rcloud_ocaps.update_notebook(id, JSON.stringify(content), k);
@@ -1685,3 +1724,17 @@ Notebook.part_name = function(id, language) {
     }
     return 'part' + id + '.' + ext;
 };
+// Added for search functionality
+
+function hidePopup()
+{
+	$("#divPopup").hide();
+	$("#divClose").hide();
+	$("#Pop-up").modal({show:true});
+}	
+
+function getTextBoxData(event){
+	if( event.keyCode == 13){
+		search();
+	}
+}
