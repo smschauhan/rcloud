@@ -1,4 +1,5 @@
 .session <- new.env(parent=emptyenv())
+.session$device.pixel.ratio <- 1
 
 ################################################################################
 ## evaluation of R code
@@ -29,12 +30,16 @@ rcloud.session.cell.eval <- function(partname, language, silent) {
   session.markdown.eval(command, language, silent)
 }
 
+rcloud.set.device.pixel.ratio <- function(ratio) {
+  .session$device.pixel.ratio <- ratio
+}
+
 session.markdown.eval <- function(command, language, silent) {
   command <- canonicalize.command(command, language)
   if (!is.null(.session$device.pixel.ratio))
     opts_chunk$set(dpi=72*.session$device.pixel.ratio)
   
-  opts_chunk$set(dev="CairoSVG", tidy=FALSE)
+  opts_chunk$set(dev="CairoPNG", tidy=FALSE)
 
   val <- try(markdownToHTML(text=paste(knit(text=command, envir=.session$knitr.env), collapse="\n"),
                             fragment=TRUE), silent=TRUE)

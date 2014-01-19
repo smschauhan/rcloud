@@ -44854,7 +44854,6 @@ Spectral:{3:["rgb(252,141,89)","rgb(255,255,191)","rgb(153,213,148)"],4:["rgb(21
 RdYlGn:{3:["rgb(252,141,89)","rgb(255,255,191)","rgb(145,207,96)"],4:["rgb(215,25,28)","rgb(253,174,97)","rgb(166,217,106)","rgb(26,150,65)"],5:["rgb(215,25,28)","rgb(253,174,97)","rgb(255,255,191)","rgb(166,217,106)","rgb(26,150,65)"],6:["rgb(215,48,39)","rgb(252,141,89)","rgb(254,224,139)","rgb(217,239,139)","rgb(145,207,96)","rgb(26,152,80)"],7:["rgb(215,48,39)","rgb(252,141,89)","rgb(254,224,139)","rgb(255,255,191)","rgb(217,239,139)","rgb(145,207,96)","rgb(26,152,80)"],8:["rgb(215,48,39)","rgb(244,109,67)","rgb(253,174,97)","rgb(254,224,139)","rgb(217,239,139)","rgb(166,217,106)","rgb(102,189,99)","rgb(26,152,80)"],9:["rgb(215,48,39)","rgb(244,109,67)","rgb(253,174,97)","rgb(254,224,139)","rgb(255,255,191)","rgb(217,239,139)","rgb(166,217,106)","rgb(102,189,99)","rgb(26,152,80)"],10:["rgb(165,0,38)","rgb(215,48,39)","rgb(244,109,67)","rgb(253,174,97)","rgb(254,224,139)","rgb(217,239,139)","rgb(166,217,106)","rgb(102,189,99)","rgb(26,152,80)","rgb(0,104,55)"],11:["rgb(165,0,38)","rgb(215,48,39)","rgb(244,109,67)","rgb(253,174,97)","rgb(254,224,139)","rgb(255,255,191)","rgb(217,239,139)","rgb(166,217,106)","rgb(102,189,99)","rgb(26,152,80)","rgb(0,104,55)"]}};
 /* an attempt to wrap dataframe access in an abstract
  interface that should work for other data too (?)
- note: test on array-of-records data!
  */
 var dataframe = {
     cols: function(data) {
@@ -45268,9 +45267,9 @@ function dcplot(frame, groupname, definition) {
     // generalization of _.has
     function mhas(obj) {
         for(var i=1; i<arguments.length; ++i)
-            if(!_.has(obj, arguments[i]))
-                return false
-        else obj = obj[arguments[i]];
+            if(!_.has(obj, arguments[i]) || obj[arguments[i]] == undefined)
+                return false;
+            else obj = obj[arguments[i]];
         return true;
     }
 
@@ -45353,7 +45352,8 @@ function dcplot(frame, groupname, definition) {
         // abstract this into a plugin - this is RCloud-specific (rserve.js)
         function get_levels(dim) {
             var levels = null;
-            if(_.isFunction(dim)) levels = dim.attrs.r_attributes.levels;
+            if(_.isFunction(dim))
+                levels = dim.attrs.r_attributes.levels;
             else if(_.has(dims, dim) && mhas(accessor(dims[dim]), 'attrs', 'r_attributes', 'levels'))
                 levels = accessor(dims[dim]).attrs.r_attributes.levels;
             return levels;
@@ -45468,12 +45468,19 @@ function dcplot(frame, groupname, definition) {
                         defn['x.units'] = dc.units.fp.precision(group.group.binwidth);
                 }
                 if(!_.has(defn, 'color.domain')) {
+                    var levels;
                     if(one_stack(defn)) {
-                        if(defn['color.x'])
-                            defn['color.domain'] = get_levels(defn.dimension);
+                        if(defn['color.x']) {
+                            levels = get_levels(defn.dimension);
+                            if(levels)
+                                defn['color.domain'] = levels;
+                        }
                     }
-                    else
-                        defn['color.domain'] = get_levels(defn.stack);
+                    else {
+                        levels = get_levels(defn.stack);
+                        if(levels)
+                            defn['color.domain'] = levels;
+                    }
                 }
             },
             line: function() {
@@ -45727,7 +45734,7 @@ function dcplot(frame, groupname, definition) {
                 if(_.has(defn, 'wedge'))
                     chart.keyAccessor(key_value(defn.wedge));
                 if(_.has(defn, 'size'))
-                    chart.keyAccessor(key_value(defn.size));
+                    chart.valueAccessor(key_value(defn.size));
 
                 if(_.has(defn, 'radius'))
                     chart.radius(defn.radius);
@@ -45766,22 +45773,6 @@ function dcplot(frame, groupname, definition) {
                                         return stack + ", " + d3.select(this).text();
                                     });
                             });
-                        /*
-                        // Hack for coloring stacked bar charts
-                        var stacks = chart.selectAll("g."+dc.constants.STACK_CLASS).selectAll("rect.bar");
-                        var stackstitles = chart.selectAll("g."+dc.constants.STACK_CLASS).selectAll("rect.bar title");
-                        for (var i = 0; i<stacks.length; i++) {
-                            for(var j = 0; j<stacks[i].length; j++) {
-                                // Avoid coloring deselected elements
-                                if(stacks[i][j].classList.contains(dc.constants.DESELECTED_CLASS))
-                                    stacks[i][j].removeAttribute('style');
-                                else stacks[i][j].setAttribute('style', 'fill: '+chart.colors()(i));
-                                // Add stack name to title/mouseover
-                                stackstitles[i][j].childNodes[0].nodeValue =
-                                    defn['stack.levels'][i] + ", " + stackstitles[i][j].childNodes[0].nodeValue;
-                            }
-                         }
-                         */
                     });
                 }
 

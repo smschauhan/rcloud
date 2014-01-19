@@ -2,6 +2,18 @@
 
 ### Features
 
+* RCloud now supports anonymous access to with user switching.
+  When user switching is enabled (`Exec.auth`), then execution
+  token will be honored even without GitHub tokens. In addtion,
+  fully anonymous access (no tokens at all) will be allowed if
+  `Exec.anon.user` configuration is set and anonymous users
+  will switch to that account.
+
+* There is now a deployment script `scripts/mkdist.sh` which
+  takes the current checkout, computes and downloads all dependency
+  packages and creates a distribution tar ball containing a repository
+  of dependend packages and the RCloud distribution.
+
 * Feature: `notebook.R` HTTP entry point added. It uses `path.info` to
   match a notebook name and (optionally) a file within the
   notebook. Possible uses:
@@ -68,6 +80,16 @@
 * Feature: added a `github.user.whitelist` option to rcloud.conf to
   allow only a subset of Github users to login to any given rcloud
   deployment. If no whitelist is given, all users are allowed in
+
+* Notebooks can be stored to "stashes" via `rcloud.stash.notebook()`
+  and then deployed in a read-only RCloud instance by using
+  `gist.deployment.stash` directive in `rcloud.conf` instead of
+  a GitHub back-end. Such service instances only support `view` and
+  `notebook.R` access.
+  Stashes are stored in RCS and helper functions `rcloud.extract.stash()`
+  and `rcloud.restore.stash()` can be used to transfer stashes from a
+  regular RCloud instance to a service depolyment instance.
+
 
 ### Bugfixes
 

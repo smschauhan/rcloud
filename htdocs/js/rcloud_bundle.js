@@ -284,6 +284,11 @@ RCloud.create = function(rcloud_ocaps) {
             k = k || _.identity;
             rcloud_ocaps.reset_session(k);
         };
+
+        rcloud.display = {};
+        rcloud.display.set_device_pixel_ratio = function(k) {
+            rcloud_ocaps.set_device_pixel_ratio(window.devicePixelRatio, k || _.identity);
+        };
     }
 
     function setup_authenticated_ocaps() {
@@ -610,6 +615,8 @@ ui_utils.ace_set_pos = function(widget, row, column) {
 
 ui_utils.install_common_ace_key_bindings = function(widget) {
     var Autocomplete = require("ace/autocomplete").Autocomplete;
+    var session = widget.getSession();
+
     widget.commands.addCommands([
         {
             name: 'another autocomplete key',
@@ -623,6 +630,23 @@ ui_utils.install_common_ace_key_bindings = function(widget) {
                 mac: "Command-L"
             },
             exec: function() { return false; }
+        }, {
+            name: 'execute-selection-or-line',
+            bindKey: {
+                win: 'Alt-Return',
+                mac: 'Alt-Return',
+                sender: 'editor'
+            },
+            exec: function(widget, args, request) {
+                var code = session.getTextRange(widget.getSelectionRange());
+                if(code.length==0) {
+                    var pos = widget.getCursorPosition();
+                    var Range = require('ace/range').Range;
+                    var range = new Range(pos.row, 0, pos.row+1, 0);
+                    code = session.getTextRange(range);
+                }
+                shell.new_interactive_cell(code, true);
+            }
         }
     ]);
 }
@@ -657,21 +681,34 @@ ui_utils.twostate_icon = function(item, on_activate, on_deactivate,
             icon.addClass(inactive_icon);
         }
     }
-    item.click(function() {
+    function on_click() {
         var state = !this.checked;
         set_state(state);
         if(state)
             on_activate();
         else
             on_deactivate();
-    });
-    return set_state;
+    }
+    function enable(val) {
+        item.off('click');
+        if(val)
+            item.click(on_click);
+    }
+    enable(true);
+    return {set_state: set_state, enable: enable};
 };
 
 // not that i'm at all happy with the look
 ui_utils.checkbox_menu_item = function(item, on_check, on_uncheck) {
-    return ui_utils.twostate_icon(item, on_check, on_uncheck,
-                                  'icon-check', 'icon-check-empty');
+    var ret = ui_utils.twostate_icon(item, on_check, on_uncheck,
+                                     'icon-check', 'icon-check-empty');
+    var base_enable = ret.enable;
+    ret.enable = function(val) {
+        // bootstrap menu items go in in an <li /> that takes the disabled class
+        $("#publish-notebook").parent().toggleClass('disabled', !val);
+        base_enable(val);
+    };
+    return ret;
 };
 
 // this is a hack, but it'll help giving people the right impression.
@@ -910,14 +947,13 @@ function create_markdown_cell_html_view(language) { return function(cell_model) 
             // There's a list of things that we need to do to the output:
             var uuid = rcloud.deferred_knitr_uuid;
 
-            if (inner_div.find("pre code").length === 0) {
+            if (cell_model.language() === 'R' && inner_div.find("pre code").length === 0) {
                 r_result_div.prepend("<pre><code>" + cell_model.content() + "</code></pre>");
             }
 
             // fix image width so that retina displays are set correctly
-            // FIXME currently assumes that all plots are 72 dpi x 7 inches (which is bad)
             inner_div.find("img")
-                .attr("width", "504px");
+                .each(function(i, img) { img.style.width = img.width / window.devicePixelRatio; });
 
             // capture deferred knitr results
             inner_div.find("pre code")
@@ -1460,7 +1496,7 @@ Notebook.create_controller = function(model)
         show_source_checkbox_ = ui_utils.checkbox_menu_item($("#show-source"),
            function() {result.show_r_source();},
            function() {result.hide_r_source();});
-        show_source_checkbox_(true);
+        show_source_checkbox_.set_state(true);
     }
 
     setup_show_source();
@@ -1639,12 +1675,12 @@ Notebook.create_controller = function(model)
 
         hide_r_source: function() {
             this._r_source_visible = false;
-            show_source_checkbox_(this._r_source_visible);
+            show_source_checkbox_.set_state(this._r_source_visible);
             Notebook.hide_r_source();
         },
         show_r_source: function() {
             this._r_source_visible = true;
-            show_source_checkbox_(this._r_source_visible);
+            show_source_checkbox_.set_state(this._r_source_visible);
             Notebook.show_r_source();
         }
     };
