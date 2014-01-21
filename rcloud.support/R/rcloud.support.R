@@ -200,97 +200,85 @@ rcloud.update.notebook <- function(id, content) {
   myctx <- .session$rgithub.context
   res <- modify.gist(id, content, ctx = .session$rgithub.context)
   .session$current.notebook <- res
+##Getting the parameters from current session, loaded from rcloud.conf file, Added extra parameter for search functionality 
   redis_host <- toString(.session$redis.host)  
   redis_port <- as.numeric(.session$redis.port)  
   solr_host <- toString(.session$solr.host)  
   solr_port <- as.numeric(.session$solr.port)
   library(rredis)
   redisConnect(host=redis_host,port=redis_port, password=NULL, returnRef= FALSE, nodelay=FALSE, timeout=2678399L)
-  redisSet("session_object",.session$rgithub.context)  
-  curlTemplate <- "curl http://host:port/solr/update?commitWithin=5000 -H 'Content-type:application/json' -d '[{\"id\":\"v_id\", \"user\":\"v_user\", \"user_url\":\"v_user_url\", \"created_at\":\"v_created_at\", \"updated_at\":\"v_updated_at\", \"commited_at\":\"v_commited_at\", \"content\":\"v_content\", \"avatar_url\":\"v_avatar_url\", \"followers\":\"v_followers\", \"description\":\"v_description\", \"size\":\"v_size\", \"public\":\"v_public\",\"starcount\":\"v_starcount\"}]'" 
+  redisSet("session_object",.session$rgithub.context)
+  redisSet("current_notebook",.session$current.notebook)
+  curlTemplate <- "curl 'http://host:port/solr/update/extract?literal.id=v_id&literal.description=v_description&literal.user=v_user&literal.user_url=v_user_url&literal.created_at=v_created_at&literal.updated_at=v_updated_at&literal.commited_at=v_commited_at&literal.avatar_url=v_avatar_url&literal.followers=v_followers&literal.size=v_size&literal.public=v_public&literal.starcount=v_starcount&commit=true' -F myfile=@cont_path"
   curlTemplate <- gsub("host",solr_host,curlTemplate)
-  curlTemplate <- gsub("port",solr_port,curlTemplate)  
-  library("rjson")
-  parser<-newJSONParser()
-  parser$addData(content)
-  jsoncontent<-parser$getObject()
-  old<-jsoncontent[[1]][[1]]
-  old<-gsub("[\"']","",old)
-  jsonData <- paste("{\"id\":\"",id,"\",\"content\":\"",old,"\",\"user\":\"",myctx$user$login,"\"}",sep="");
-  r <- redisGet(id)
-  if(is.null(r)){
-	parser<-newJSONParser()
-	parser$addData(jsonData)
-	r<-parser$getObject()
-  }else if(typeof(r)=="list" || typeof(r)=="character"){
-	parser<-newJSONParser()
-	parser$addData(jsonData)
-	jsonData<-parser$getObject()
-	r$content <- paste(r$content,jsonData$content,sep=" ")
-  }
-  redisSet(id,r)
-  redis_res<-redisGet(id)
-  username <- redis_res$user
+  curlTemplate <- gsub("port",solr_port,curlTemplate)
   redcmd<-paste("notebook/",id,"/starcount",sep="")
   star_count<-redisGet(redcmd)
-  redis_cmd <- gsub("user",username,"user/system/config.json")
-  redis_json <- redisGet(redis_cmd)
-  library(RJSONIO)
-  redis_response <- fromJSON(redis_json)
-  notebooks<-lapply(redis_response$interests[[1]], function(x) x[[1]][[1]])
-  updated_at<-lapply(redis_response$interests[[1]], function(x) x[[2]][[1]])
-  visibility<-lapply(redis_response$interests[[1]], function(x) x[[3]][[1]])
-  count <- redis_response$nextwork-1
-  for(i in 1:count)
-  { 
-    	if (redis_response$currbook==names(notebooks)[i])
-	  {
-		description <- notebooks[[i]]
-		update_time <- updated_at[[i]]
-		public_state <- visibility[[i]]
-	  }
-  }
-  if ( public_state == "public")
-  {
-	    public_s <- "TRUE"
-  }else	{
-	    public_s <- "FALSE"
-}
-################Added to get session Response#########################
   session_res <- redisGet("session_object")
+  current_notebook <- redisGet("current_notebook")
+  redisSet("cont_path",.session$content_path)  
+  cont_path <- redisGet("cont_path")
+  content<-lapply(current_notebook$content$files,function(x) x[[1]][[1]])
+  length<-length(content)
+ cat("",file=cont_path)
+ #Getting content of Notebook
+  for(i in 1:(length-1))
+  {
+     cont_parts<- lapply(current_notebook$content$files[[i]][[6]],function(x) x[[1]][[1]])
+    cat(cont_parts[[1]],file=cont_path,sep="\n",append=TRUE) 
+  }
   followers <- session_res$user$followers
-  created_at <- session_res$user$created_at
-  avatar_url <- session_res$user$avatar_url
-  user_url <- session_res$user$url
-  g_url <- session_res$user$html_url 
-  curlCommand <- gsub("v_id",redis_res$id,curlTemplate)
-  curlCommand <- gsub("v_user_url",user_url,curlCommand)
-  curlCommand <- gsub("v_user",redis_res$user,curlCommand)	
-  curlCommand <- gsub("v_created_at",created_at,curlCommand)
-  curlCommand <- gsub("v_updated_at",update_time,curlCommand)
-  curlCommand <- gsub("v_commited_at",created_at,curlCommand)
-  curlCommand <- gsub("v_content",redis_res$content,curlCommand)
-  curlCommand <- gsub("v_url","g_url",curlCommand)
-  curlCommand <- gsub("v_avatar_url",avatar_url,curlCommand)
+  library("RCurl") 
+  description<- gsub(" ","%20",current_notebook$content$description)
+  avatar<- gsub("&","%26",current_notebook$content$user$avatar_url)
+  curlCommand <- gsub("v_id",current_notebook$content$id,curlTemplate)
+  curlCommand <- gsub("v_user_url",current_notebook$content$user$url,curlCommand)
+  curlCommand <- gsub("v_user",current_notebook$content$user$login,curlCommand)	
+  curlCommand <- gsub("v_created_at",current_notebook$content$created_at,curlCommand)
+  curlCommand <- gsub("v_updated_at",current_notebook$content$updated_at,curlCommand)
+  curlCommand <- gsub("v_commited_at",current_notebook$content$updated_at,curlCommand)
+  #curlCommand <- gsub("v_content","cont",curlCommand)
+  curlCommand <- gsub("v_avatar_url",avatar,curlCommand)
   curlCommand <- gsub("v_followers",followers,curlCommand)
   curlCommand <- gsub("v_description",description,curlCommand)
   curlCommand <- gsub("v_size","10",curlCommand)
-  curlCommand <- gsub("v_public",public_s,curlCommand)
+  curlCommand <- gsub("v_public",current_notebook$content$public,curlCommand)
   curlCommand <- gsub("v_starcount",star_count,curlCommand)
+  curlCommand<-gsub("cont_path",cont_path,curlCommand)
   system(curlCommand)
   redisClose()
 }
 
 rcloud.custom.search <-function(q){
+#Getting response from Solr through url 
 	library("rjson")
 	library("RCurl")  
     solr_host <- toString(.session$solr.host)  
     solr_port <- as.numeric(.session$solr.port)
+	q <- gsub(" ","%20",q)
 	solr_url <- paste("http://host:s_port/solr/select?q=",q,"&start=0&rows=1000&wt=json",sep="")
 	solr_url <- gsub("host",solr_host,solr_url)
 	solr_url <- gsub("s_port",solr_port,solr_url)
 	solr_res<-getURL(solr_url)
 	return(solr_res)
+}
+
+rcloud.load.search.notebook <-function(id){
+#Loading notebook in new tab by getting port and host through conf files
+  redis_host <- toString(.session$redis.host)  
+  redis_port <- as.numeric(.session$redis.port)  
+  library(rredis)
+  redisConnect(host=redis_host,port=redis_port, password=NULL, returnRef= FALSE, nodelay=FALSE, timeout=2678399L)
+  session_res<- redisGet("session_object")
+  r_port <-readLines(.session$path)
+  r_port <- as.numeric(gsub("http.port","",r_port[3]))
+  r_host <- toString(.session$rhost)
+  r_url <- "http://rhost:rport/main.html?notebook="
+  r_url <- gsub("rhost",r_host,r_url)
+  r_url <- gsub("rport",r_port,r_url)
+  r_url <- paste(r_url,id,sep="")
+  return(r_url)
+  
 }
 #END
 

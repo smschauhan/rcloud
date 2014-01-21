@@ -1,6 +1,4 @@
-/*
- * added these functions for supporting search functionality [ Line : 5 TO 13]
- * */
+/* Added these functions for supporting search functionality */
 
 function search(){	
 	var qry = $('#input-text-search').val();
@@ -8,11 +6,10 @@ function search(){
 	return;
 }
 
-function load_searched_notebook(notebook_id){
-    window.open("http://127.0.0.1:8080/main.html?notebook="+notebook_id);	
+function loadSearchedNotebook(notebook_id){
+	rcloud.load_search_notebook(notebook_id);
 }
 /*--------------------------END--------------------------*/
-
 function resize_side_panel() {
     var non_notebook_panel_height = 246;
     $('.notebook-tree').css('height', (window.innerHeight - non_notebook_panel_height)+'px');
@@ -136,6 +133,7 @@ function main_init() {
             rcloud.session_init(rcloud.username(), rcloud.github_token(), function(hello) {
                 rclient.post_response(hello);
             });
+            rcloud.display.set_device_pixel_ratio();
 
             $("#new-md-cell-button").click(function() {
                 shell.new_markdown_cell("", "markdown");

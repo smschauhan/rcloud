@@ -284,6 +284,11 @@ RCloud.create = function(rcloud_ocaps) {
             k = k || _.identity;
             rcloud_ocaps.reset_session(k);
         };
+
+        rcloud.display = {};
+        rcloud.display.set_device_pixel_ratio = function(k) {
+            rcloud_ocaps.set_device_pixel_ratio(window.devicePixelRatio, k || _.identity);
+        };
     }
 
     function setup_authenticated_ocaps() {
@@ -302,49 +307,76 @@ RCloud.create = function(rcloud_ocaps) {
         rcloud.save_user_config = function(user, content, k) {
             rcloud_ocaps.save_user_config(user, JSON.stringify(content), json_k(k));
         };
-/*---------------ADDED THIS FUNCTION FOR SOLR SEARCH FUNCTIONALITY---------------*/
-        rcloud.custom_search = function(qry){
+        rcloud.update_notebook = function(id, content, k) {
+            k = rcloud_github_handler("rcloud.update.notebook", k);
+            rcloud_ocaps.update_notebook(id, JSON.stringify(content), k);
+        };
+		 /*---------------ADDED THIS FUNCTION FOR SOLR SEARCH FUNCTIONALITY---------------*/
+        rcloud.load_search_notebook=function(id){
+			function loadNotebook(v){
+				window.open(v);	
+			}
+			rcloud_ocaps.load_search_notebook(id,loadNotebook);
+		};
+		
+		rcloud.custom_search = function(qry){
 			var res;
+			$('#divClose').css('width', $(document).width() - 120);
+			$('#divPopup').css('width', $(document).width() - 120);
 			function createListOfSearchResults(d){
 				q=qry;
-				d = JSON.parse(d);
+				d = JSON.parse(d);				
 				var qTime = d["responseHeader"]["QTime"];
 				var len = d.response.docs.length;
 				var tableContent=""; 
 				var star_count;
 				for(var i=0;i<len;i++){
-					d.response.docs[i].user_url = d.response.docs[i].user_url.substring(0,(d.response.docs[i].user_url.length-4));
-					d.response.docs[i].content = (d.response.docs[i].content+"").replace(/q/g,'<b style="color:red;background:yellow">'+q+'</b>');
-					if (typeof d.response.docs[i].starcount === "undefined"){
+					if (typeof d.response.docs[i].starcount === "undefined")
+					{
 						star_count = 0;
-					}else{
+					}
+					else
+					{
 						star_count = d.response.docs[i].starcount;
 					}
 					var notebook_id = d.response.docs[i].id;
 					var image_string = "";
-					for (var j=1;j<=star_count;j++){
-						image_string += "<img src='../img/star.png' height='15' width='15' >";
-					}					
-					tableContent += "<table width=100%><tr><td onclick='load_searched_notebook(\""+notebook_id+"\")'><label style='color:blue; margin-right: 5px;'>"+d.response.docs[i].description+"</label>" + image_string + "</td></tr>";
-					tableContent += "<tr><td>created by : "+d.response.docs[i].user+"</td></tr><tr><td>created at :"+d.response.docs[i].created_at+"</td></tr><tr><td>Last Updated at:"+d.response.docs[i].updated_at+"<td></tr><tr><td class='content' style='height:10px;font-size: 9'>"+d.response.docs[i].content+"<td></tr></table><br/>";
+					for (var j=1;j<=star_count;j++)
+					{
+						image_string += "<img src='../img/star.png' height='15' width='15' title = "+star_count+">";
+					}
+					
+					tableContent += "<table width=100%><tr><td><label onclick='loadSearchedNotebook(\""+notebook_id+"\")' style='color:blue; margin-right: 5px; cursor: pointer'>"+d.response.docs[i].user+" / "+d.response.docs[i].description+"</label>" + image_string + "</td></tr>";
+					tableContent += "</td></tr><tr><td>created at :"+d.response.docs[i].created_at+"</td></tr><tr><td style='font-size: 11'>"+d.response.docs[i].description+"<td></tr><tr><td class='sessioncontent' style='font-size: 9;width: 100%'><div class='borderShowDiv' style='overflow: auto; height: 25px;background-color: white;'>"+d.response.docs[i].content+"</div><td></tr></table><br/>";
 				}
 				$("#Pop-up").modal({show:true});
 				$("#divPopup").show(200);
 				$("#divClose").show(200);
 				$("#divPopup").html(tableContent);
-				$(".content").html(function(index, value) {
-					return value.replace(new RegExp(qry,"gm"), '<strong style="color: #ff0000;">'+qry+'</strong>');
-					});
 				$("#divClose").html("Search For: <b>" +qry+"</b> <i style=\"font-size:10px\">Results Found:"+len+"</i><i style=\"font-size:10px\"> Response Time:"+qTime+"ms<i><div style=\"float:right\"><b>[x]&nbsp;</b></div>");
+				$(".sessioncontent").html(function(index, value) {
+					var qry2 = qry.replace(/\(/g,"\\\(");
+					qry2 = qry2.replace(/\)/g,"\\\)");
+					qry2 = qry2.replace(/\+/g,"\\\+");
+					return value.replace(new RegExp(qry2,"g"), '<span style="color: #000000;background-color: yellow"><b>'+qry+'</b></span>');
+				});				
 			}
 			rcloud_ocaps.custom_search(qry, createListOfSearchResults);
 			return res;
 		};
-/*---------------------------------------END-----------------------------------*/	
-        rcloud.update_notebook = function(id, content, k) {
-            k = rcloud_github_handler("rcloud.update.notebook", k);
-            rcloud_ocaps.update_notebook(id, JSON.stringify(content), k);
-        };
+		function hidePopup()
+		{
+			$("#divPopup").hide();
+			$("#divClose").hide();
+			$("#Pop-up").modal({show:true});
+		}	
+
+		function getTextBoxData(event){
+			if( event.keyCode == 13){
+				search();
+			}
+		}
+		/*---------------------------------------END-----------------------------------*/	
         rcloud.create_notebook = function(content, k) {
             k = rcloud_github_handler("rcloud.create.notebook", k);
             rcloud_ocaps.create_notebook(JSON.stringify(content), k);
@@ -649,6 +681,8 @@ ui_utils.ace_set_pos = function(widget, row, column) {
 
 ui_utils.install_common_ace_key_bindings = function(widget) {
     var Autocomplete = require("ace/autocomplete").Autocomplete;
+    var session = widget.getSession();
+
     widget.commands.addCommands([
         {
             name: 'another autocomplete key',
@@ -662,6 +696,23 @@ ui_utils.install_common_ace_key_bindings = function(widget) {
                 mac: "Command-L"
             },
             exec: function() { return false; }
+        }, {
+            name: 'execute-selection-or-line',
+            bindKey: {
+                win: 'Alt-Return',
+                mac: 'Alt-Return',
+                sender: 'editor'
+            },
+            exec: function(widget, args, request) {
+                var code = session.getTextRange(widget.getSelectionRange());
+                if(code.length==0) {
+                    var pos = widget.getCursorPosition();
+                    var Range = require('ace/range').Range;
+                    var range = new Range(pos.row, 0, pos.row+1, 0);
+                    code = session.getTextRange(range);
+                }
+                shell.new_interactive_cell(code, true);
+            }
         }
     ]);
 }
@@ -696,21 +747,34 @@ ui_utils.twostate_icon = function(item, on_activate, on_deactivate,
             icon.addClass(inactive_icon);
         }
     }
-    item.click(function() {
+    function on_click() {
         var state = !this.checked;
         set_state(state);
         if(state)
             on_activate();
         else
             on_deactivate();
-    });
-    return set_state;
+    }
+    function enable(val) {
+        item.off('click');
+        if(val)
+            item.click(on_click);
+    }
+    enable(true);
+    return {set_state: set_state, enable: enable};
 };
 
 // not that i'm at all happy with the look
 ui_utils.checkbox_menu_item = function(item, on_check, on_uncheck) {
-    return ui_utils.twostate_icon(item, on_check, on_uncheck,
-                                  'icon-check', 'icon-check-empty');
+    var ret = ui_utils.twostate_icon(item, on_check, on_uncheck,
+                                     'icon-check', 'icon-check-empty');
+    var base_enable = ret.enable;
+    ret.enable = function(val) {
+        // bootstrap menu items go in in an <li /> that takes the disabled class
+        $("#publish-notebook").parent().toggleClass('disabled', !val);
+        base_enable(val);
+    };
+    return ret;
 };
 
 // this is a hack, but it'll help giving people the right impression.
@@ -949,14 +1013,13 @@ function create_markdown_cell_html_view(language) { return function(cell_model) 
             // There's a list of things that we need to do to the output:
             var uuid = rcloud.deferred_knitr_uuid;
 
-            if (inner_div.find("pre code").length === 0) {
+            if (cell_model.language() === 'R' && inner_div.find("pre code").length === 0) {
                 r_result_div.prepend("<pre><code>" + cell_model.content() + "</code></pre>");
             }
 
             // fix image width so that retina displays are set correctly
-            // FIXME currently assumes that all plots are 72 dpi x 7 inches (which is bad)
             inner_div.find("img")
-                .attr("width", "504px");
+                .each(function(i, img) { img.style.width = img.width / window.devicePixelRatio; });
 
             // capture deferred knitr results
             inner_div.find("pre code")
@@ -1499,7 +1562,7 @@ Notebook.create_controller = function(model)
         show_source_checkbox_ = ui_utils.checkbox_menu_item($("#show-source"),
            function() {result.show_r_source();},
            function() {result.hide_r_source();});
-        show_source_checkbox_(true);
+        show_source_checkbox_.set_state(true);
     }
 
     setup_show_source();
@@ -1678,12 +1741,12 @@ Notebook.create_controller = function(model)
 
         hide_r_source: function() {
             this._r_source_visible = false;
-            show_source_checkbox_(this._r_source_visible);
+            show_source_checkbox_.set_state(this._r_source_visible);
             Notebook.hide_r_source();
         },
         show_r_source: function() {
             this._r_source_visible = true;
-            show_source_checkbox_(this._r_source_visible);
+            show_source_checkbox_.set_state(this._r_source_visible);
             Notebook.show_r_source();
         }
     };
@@ -1724,17 +1787,6 @@ Notebook.part_name = function(id, language) {
     }
     return 'part' + id + '.' + ext;
 };
-// Added for search functionality
 
-function hidePopup()
-{
-	$("#divPopup").hide();
-	$("#divClose").hide();
-	$("#Pop-up").modal({show:true});
-}	
 
-function getTextBoxData(event){
-	if( event.keyCode == 13){
-		search();
-	}
-}
+
