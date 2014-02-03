@@ -4,10 +4,10 @@ WD=`pwd`
 if [ ! -e "$WD/packages/src/contrib/PACKAGES" ]; then
     echo '' 2>&1
     if [ -e "$WD/rcloud.support/DESCRIPTION" ]; then
-	echo ' ERROR: this script only works from the release distribution' 2>&1
-	echo '        (not git checkout) and must be run from the RCloud root directory!' 2>&1
+        echo ' ERROR: this script only works from the release distribution' 2>&1
+        echo '        (not git checkout) and must be run from the RCloud root directory!' 2>&1
     else
-	echo ' ERROR: you must run this script from the RCloud root directory!' 2>&1
+        echo ' ERROR: you must run this script from the RCloud root directory!' 2>&1
     fi
     echo '' 2>&1
     exit 1
