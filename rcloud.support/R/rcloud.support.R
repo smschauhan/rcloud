@@ -211,7 +211,7 @@ rcloud.update.notebook <- function(id, content) {
   }else
 	star.count <- rcs.get(star.count.key(id))
   if (is.null(star.count)) star.count <- 0 
-  mcparallel(update.solr(solr.host.port,res,star.count,.session$collection), detach=TRUE)
+  mcparallel(update.solr(solr.host.port,res,star.count,.session$collection), detached=TRUE)
   res
 }
 
