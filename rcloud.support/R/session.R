@@ -38,9 +38,18 @@ session.markdown.eval <- function(command, language, silent) {
   command <- canonicalize.command(command, language)
   if (!is.null(.session$device.pixel.ratio))
     opts_chunk$set(dpi=72*.session$device.pixel.ratio)
-  
+  if (!is.null(.session$disable.warnings))
+    opts_chunk$set(warning=FALSE)
+  else
+    opts_chunk$set(warning=TRUE)
+  if (!is.null(.session$disable.echo))
+    opts_chunk$set(echo=FALSE)
+  else
+    opts_chunk$set(echo=TRUE)
+  opts_chunk$set(prompt=TRUE)
   opts_chunk$set(dev="CairoPNG", tidy=FALSE)
 
+  if (command == "") command <- " "
   val <- try(markdownToHTML(text=paste(knit(text=command, envir=.session$knitr.env), collapse="\n"),
                             fragment=TRUE), silent=TRUE)
   if (!inherits(val, "try-error") && !silent && rcloud.debug.level()) print(val)
@@ -67,7 +76,10 @@ rcloud.session.init <- function(...) {
   .GlobalEnv$tmpfile <- paste('tmp-',paste(sprintf('%x',as.integer(runif(4)*65536)),collapse=''),'.tmp',sep='')
   start.rcloud(...)
   rcloud.reset.session()
-  paste(R.version.string, " --- welcome, ", .session$username, sep='')
+  revFn <- pathConf("root", "REVISION")
+  ver <- ''
+  if (file.exists(revFn)) try({ vl <- readLines(revFn); ver <- paste0("RCloud ", vl[1], " (", substr(vl[2],1,7),") --- ") })
+  paste0(ver, R.version.string, "<br>Welcome, ", .session$username)
 }
 
 ## WS init

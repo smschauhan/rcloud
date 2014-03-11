@@ -1,10 +1,6 @@
 body {
     font-family: Helvetica Neue, Verdana, Helvetica, Arial, sans-serif;
-    padding-top: 65px;
-}
-
-.tab-div {
-    margin: 0.5em;
+    padding-top: 51px; /* exact same height as navbar */
 }
 
 .internals-float {
@@ -69,22 +65,6 @@ rect.frame {
   fill: #fff;
   fill-opacity: .7;
   stroke: #aaa;
-}
-
-.detachable {
-    background-color: #fff;
-    margin: 10px;
-    padding: 10px;
-    display: inline-block;
-    border-color: #fff;
-    border-style: solid;
-    border-width: 1px;
-}
-
-.detachable:hover {
-    border-color: #ddd;
-    border-style: solid;
-    border-width: 1px;
 }
 
 .figure-icon {
@@ -165,24 +145,43 @@ rect.frame {
 .notebook-cell {
     position:relative;
     width:100%;
-    border-width: 1px;
-    padding: 1px;
-    border-color: #eee;
-    border-style: solid;
-    margin-top: 1.2em;
-    min-height: 75px;
+    min-height: 25px;
 }
 
-.notebook-cell .cell-controls {
+.notebook-cell .outer-ace-div {
+    position: relative; 
+    width: 100%; 
+    height: calc(100% - 25px);
+    border: 1px solid #fff;
+}
+
+.cell-status {
+    position: relative;
+    width: 100%;
+    height: 25px;
+    background-color: #e5e5e5;
+}
+
+.cell-status.big {
+    height: 35px;
+}
+
+.cell-status .cell-controls {
     position: absolute;
-    right: -2em;
-    top: .1em;
+    bottom: 0;
+    right: 0;
+    padding: 2 2 2 2px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    background-color: white;
 }
 
 .notebook-cell .cell-insert-control {
+    color: #555;
     position: absolute;
-    right: -0.5em;
-    top: -1.3em;
+    right: -0.1em;
+    top: -0.5em;
+    z-index: 5;
 }
 
 .fontawesome-button {
@@ -202,6 +201,7 @@ rect.frame {
 .header-button {
     float: right;
     font-size: 120%;
+    color: #f1f1e5;
 }
 
 /* Ace sets its z-index to something obscene,
@@ -394,38 +394,166 @@ div.r-result-div h3,
 div.r-result-div h4,
 div.r-result-div h5 {
     margin-top: 0;
+    padding-top: 12px;
+    padding-right: 16px;
+    padding-left: 16px;
 }
 
-.r-result-div {
-    padding: 0.5em;
-}
+div.r-result-div p {
+    margin-left: 16px;
+    margin-right: 16px;
+};
 
 pre {
     max-width: 100%;
 }
 
-/******************************************************************************/
-/* Some pseudo-elements for watermarking the ACE editors
- */
-
-.r-language-pseudo:after {
-    content: "R";
-    position: absolute;
-    top: 0.2em;
-    right: 0.3em;
-    color: #AAA;
-    text-shadow: 0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white
-;
-    z-index: 20;
+/* some visual affordance for ace-gutter sortable handles */
+#output:not(.ui-sortable-disabled) > .notebook-cell .ace_gutter-layer {
+    cursor: -moz-grab;
+    cursor: -webkit-grab;
+    cursor: grab;
 }
 
-.rmarkdown-language-pseudo:after {
-    content: "RMarkdown";
+#output > .notebook-cell .grabbing {
+    cursor: -moz-grabbing;
+    cursor: -webkit-grabbing;
+    cursor: grabbing;
+}
+
+.tab-div {
+    margin-bottom: 51px;
+}
+
+.rcloud-prompt {
+    position: fixed;
+    bottom: 0;
+    z-index: 10;
+    padding: 0;
+    background-color: #777;
+}
+
+.btn {
+    border-radius: 0;
+    font-size: inherit;
+}
+
+#prompt-div button {
+    border: 0;
+    background-color: #777;
+    color: #f1f1e5;
+}
+
+#new-r-cell-button:hover {
+    background-color: rgb(232,241,250);
+    color: #333;
+}
+
+#new-md-cell-button:hover {
+    background-color: rgb(247,238,228);
+    color: #333;
+}
+
+.title-offset {
     position: absolute;
-    top: 0.2em;
-    right: 0.3em;
-    color: #AAA;
-    text-shadow: 0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white,0 0 0.7em white
-;
-    z-index: 20;
+    text-overflow: ellipsis; /* Chrome bug to be resolved soon: https://code.google.com/p/chromium/issues/detail?id=166263 */
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.left > .title-offset {
+    left: 3em;
+}
+
+.right > .title-offset {
+    right: 3em;
+}
+
+a.accordion-toggle:hover {
+    text-decoration: none;
+}
+
+a.accordion-toggle [class^="icon-"], a.accordion-toggle [class*="icon-"] {
+    position: relative;
+    top: 2px;
+}
+
+a.accordion-toggle.right [class^="icon-"], a.accordion-toggle.right [class*="icon-"] {
+    position: absolute;
+    right: 0px;
+}
+
+.panel-default > .panel-heading {
+    background-color: #777;
+}
+
+.panel-default > .panel-heading > .accordion-toggle {
+    color: #f1f1e5;
+}
+
+.panel-heading {
+    border-radius: 0;
+}
+
+.panel-collapse {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background-color: #777;
+}
+
+.panel-body {
+    background-color: #fff;
+}
+
+.navbar-inverse {
+    border-color: #222;
+}
+
+.ace-chrome .ace_print-margin {
+    display: none;
+}
+
+.nav-tabs > li > a {
+    padding: 5px;
+    padding-bottom: 2px;
+    color: rgb(28, 66, 87);
+    background-color: rgba(224,224,224,0.5);
+}
+
+.nav-tabs > li.active > a {
+    font-weight: bold;
+    background-color: rgba(224,224,224,0.75);
+}
+
+/*****************************************************************************/
+/* Fix that awful select from webkit */
+
+.form-control {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 100px;
+    padding: 1px 0 0 4px;
+    position: relative;
+    font-size: 12px;
+    border: inherit;
+
+    background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16px' height='16px'><polyline fill='#555' points='8,13 10,9 6,9'/><polyline fill='#555' points='8,4 10,8 6,8'/></svg>") right no-repeat;
+}
+
+.form-control.big {
+    height: 20px;
+    font-size: 16px;
+}
+.r-result-div pre code:not(.r) {
+    width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    border-left: 1px solid rgba(0,0,0,0.15);
+    border-right: 1px solid rgba(0,0,0,0.15);
+}
+
+.r-result-div p img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }

@@ -104,7 +104,7 @@ rcloud.unauthenticated.call.notebook <- function(id, version = NULL, args = NULL
   rcloud.call.notebook(id, version, args)
 }
 
-rcloud.call.notebook <- function(id, version = NULL, args = NULL) {
+rcloud.call.notebook <- function(id, version = NULL, args = NULL, attach = FALSE) {
   res <- rcloud.get.notebook(id, version)
   if (res$ok) {
     args <- as.list(args)
@@ -117,8 +117,12 @@ rcloud.call.notebook <- function(id, version = NULL, args = NULL) {
     ## extract the integer number
     i <- suppressWarnings(as.integer(gsub("^\\D+(\\d+)\\..*", "\\1", n)))
     result <- NULL
-    e <- new.env(parent=.GlobalEnv)
-    if (is.list(args) && length(args)) for (i in names(args)) if (nzchar(i)) e[[i]] <- args[[i]]
+    if (is.environment(args)) {
+      e <- args
+    } else {
+      e <- new.env(parent=.GlobalEnv)
+      if (is.list(args) && length(args)) for (i in names(args)) if (nzchar(i)) e[[i]] <- args[[i]]
+    }
     ## sort
     for (o in p[match(sort.int(i), i)]) {
       if (grepl("^part.*\\.R$", o$filename)) { ## R code
@@ -128,6 +132,7 @@ rcloud.call.notebook <- function(id, version = NULL, args = NULL) {
         ## FIXME: we ignore markdown for now ...
       }
     }
+    if (attach) attach(e)
     result
   } else NULL
 }
@@ -344,4 +349,16 @@ rcloud.unstar.notebook <- function(notebook)
 rcloud.get.my.starred.notebooks <- function()
 {
   rcs.list(star.key("*"))
+}
+
+rcloud.purl.source <- function(contents)
+{
+  input.file <- tempfile(fileext="Rmd")
+  output.file <- tempfile(fileext="R")
+  cat(contents, file = input.file)
+  purl(input.file, output.file, documentation = 2)
+  result <- readLines(output.file)
+  unlink(output.file)
+  unlink(input.file)
+  result
 }

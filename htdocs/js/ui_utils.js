@@ -2,16 +2,18 @@ var ui_utils = {};
 
 ui_utils.fa_button = function(which, title, classname, style)
 {
-    var span = $('<span/>', {class: 'fontawesome-button ' + (classname || '')});
-    var icon = $('<i/>', {class: which});
-    if(style)
-        icon.css(style);
-    span.append(icon)
-        .tooltip({
-            title: title,
-            delay: { show: 250, hide: 0 }
-        });
-    return span;
+    var icon = $.el.i({'class': which});
+    var span = $.el.span({'class': 'fontawesome-button ' + (classname || '')},
+                         icon);
+    if(style) {
+        for (var k in style)
+            icon.style[k] = style[k];
+    }
+    // $(icon).css(style);
+    return $(span).tooltip({
+        title: title,
+        delay: { show: 250, hide: 0 }
+    });
 };
 
 ui_utils.enable_fa_button = function(el) {
@@ -31,10 +33,12 @@ ui_utils.disable_bs_button = function(el) {
 };
 
 
-ui_utils.ace_editor_height = function(widget)
+ui_utils.ace_editor_height = function(widget, min_rows, max_rows)
 {
+    min_rows = _.isUndefined(min_rows) ? 0  : min_rows;
+    max_rows = _.isUndefined(max_rows) ? 30 : max_rows;
     var lineHeight = widget.renderer.lineHeight;
-    var rows = Math.min(30, widget.getSession().getLength());
+    var rows = Math.max(min_rows, Math.min(max_rows, widget.getSession().getLength()));
     var newHeight = lineHeight*rows + widget.renderer.scrollBar.getWidth();
     return Math.max(75, newHeight);
     /*
@@ -54,7 +58,7 @@ ui_utils.ace_set_pos = function(widget, row, column) {
     range.setStart(row, column);
     range.setEnd(row, column);
     sel.setSelectionRange(range);
-}
+};
 
 ui_utils.install_common_ace_key_bindings = function(widget) {
     var Autocomplete = require("ace/autocomplete").Autocomplete;
@@ -92,7 +96,7 @@ ui_utils.install_common_ace_key_bindings = function(widget) {
             }
         }
     ]);
-}
+};
 
 // bind an ace editor to a listener and return a function to change the
 // editor content without triggering that listener
@@ -193,4 +197,56 @@ ui_utils.make_prompt_chevron_gutter = function(widget)
             this._emit("changeGutterWidth", gutterWidth);
         }
     };
+};
+
+ui_utils.make_editable = function(elem$, editable, on_edit) {
+    // http://stackoverflow.com/questions/6139107/programatically-select-text-in-a-contenteditable-html-element
+    function selectElementContents(el) {
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    if(elem$.attr('contenteditable') === (editable?'true':'false'))
+        return;
+
+    elem$.data('restore_edit', elem$.text());
+    function cancel() {
+        elem$.text(elem$.data('restore_edit'));
+    }
+
+    // remove all handlers, and then recreate them if the title is editable
+    elem$.off('keydown');
+    elem$.off('focus');
+    elem$.off('blur');
+    if (editable) {
+        elem$.attr('contenteditable', 'true');
+        elem$.focus(function() {
+            window.setTimeout(function() {
+                selectElementContents(elem$[0]);
+            }, 0);
+            elem$.off('blur');
+            elem$.blur(cancel); // click-off cancels
+        });
+        elem$.keydown(function(e) {
+            if(e.keyCode === 13) {
+                var result = elem$.text();
+                if(on_edit(result)) {
+                    elem$.off('blur'); // don't cancel!
+                    elem$.blur();
+                }
+                else return false; // don't let CR through!
+            }
+            else if(e.keyCode === 27)
+                elem$.blur(); // and cancel
+            return true;
+        });
+    }
+    else elem$.attr('contenteditable', 'false');
+};
+
+ui_utils.on_next_tick = function(f) {
+    window.setTimeout(f, 0);
 };
